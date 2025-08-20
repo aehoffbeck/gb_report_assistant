@@ -56,7 +56,38 @@ paths:
                           type: string
                         description:
                           type: string
-
+  /upload-supporting-docs:
+    post:
+      operationId: uploadSupportingDocs
+      summary: Upload supporting documents for a specific client
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                clientName:
+                  type: string
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        '200':
+          description: Upload successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  files:
+                    type: array
+                    items:
+                      type: string
   /analyze-graphs:
     post:
       operationId: extractInsightsFromGraphs

@@ -72,6 +72,29 @@ def get_template_fields(payload: TemplateRequest):
         "requiresUploads": uploads
     }
 
+
+@app.post("/upload-supporting-docs")
+async def upload_supporting_docs(
+    clientName: str = Form(...),
+    files: List[UploadFile] = File(...)
+):
+    folder = os.path.join("uploads", "supporting_docs", clientName.replace(" ", "_"))
+    os.makedirs(folder, exist_ok=True)
+
+    saved_files = []
+
+    for file in files:
+        file_path = os.path.join(folder, file.filename)
+        with open(file_path, "wb") as f:
+            content = await file.read()
+            f.write(content)
+        saved_files.append(file_path)
+
+    return {
+        "message": f"Uploaded {len(saved_files)} file(s) for {clientName}",
+        "files": saved_files
+    }
+
 # --------------------------
 # Placeholder: Analyze graphs
 # --------------------------
