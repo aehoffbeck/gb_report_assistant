@@ -1,0 +1,198 @@
+openapi: 3.1.0
+info:
+  title: GB Report Assistant API
+  description: API to help generate client-facing reports using structured prompts and uploaded data.
+  version: 1.0.0
+servers:
+  - url: https://gb-report-api.onrender.com
+    description: Production Render server
+paths:
+  /report-template-fields:
+    post:
+      operationId: getTemplateFields
+      summary: Get report fields and prompts for a selected template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clientName:
+                  type: string
+                templateName:
+                  type: string
+              required:
+                - clientName
+                - templateName
+      responses:
+        '200':
+          description: Template prompts and field data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clientName:
+                    type: string
+                  template:
+                    type: string
+                  fieldNames:
+                    type: array
+                    items:
+                      type: string
+                  userPrompts:
+                    type: array
+                    items:
+                      type: string
+                  requiresUploads:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type:
+                          type: string
+                        source:
+                          type: string
+                        description:
+                          type: string
+
+  /analyze-graphs:
+    post:
+      operationId: extractInsightsFromGraphs
+      summary: Extract key findings from uploaded graph files
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                files:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+      responses:
+        '200':
+          description: List of insights from graphs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  insights:
+                    type: array
+                    items:
+                      type: string
+
+  /analyze-spreadsheet:
+    post:
+      operationId: extractInsightsFromSpreadsheet
+      summary: Extract insights from a media coverage spreadsheet
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Spreadsheet analysis insights
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  insights:
+                    type: array
+                    items:
+                      type: string
+
+  /generate-executive-summary:
+    post:
+      operationId: generateExecutiveSummary
+      summary: Generate an executive summary based on field responses and analysis
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                clientName:
+                  type: string
+                templateName:
+                  type: string
+                fieldResponses:
+                  type: object
+                  additionalProperties:
+                    type: string
+                graphInsights:
+                  type: array
+                  items:
+                    type: string
+                spreadsheetInsights:
+                  type: array
+                  items:
+                    type: string
+              required:
+                - clientName
+                - templateName
+                - fieldResponses
+      responses:
+        '200':
+          description: Generated executive summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clientName:
+                    type: string
+                  executiveSummary:
+                    type: string
+
+  /generate-report-docx:
+    post:
+      operationId: generateFinalDocxReport
+      summary: Generate a filled .docx report document
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                clientName:
+                  type: string
+                templateName:
+                  type: string
+                executiveSummary:
+                  type: string
+                keyFindings:
+                  type: array
+                  items:
+                    type: string
+                graphFiles:
+                  type: array
+                  items:
+                    type: string
+                    format: binary
+              required:
+                - clientName
+                - templateName
+                - executiveSummary
+      responses:
+        '200':
+          description: Final report .docx file
+          content:
+            application/vnd.openxmlformats-officedocument.wordprocessingml.document:
+              schema:
+                type: string
+                format: binary
+
