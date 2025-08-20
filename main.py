@@ -144,6 +144,46 @@ def generate_summary(data: ExecSummaryRequest):
         "clientName": data.clientName,
         "executiveSummary": summary
     }
+@app.post("/summarize-supporting-docs")
+def summarize_supporting_docs(clientName: str = Form(...)):
+    folder = os.path.join("uploads", "supporting_docs", clientName.replace(" ", "_"))
+    if not os.path.exists(folder):
+        return {"error": f"No documents found for client: {clientName}"}
+
+    extracted_text = ""
+
+    for file_name in os.listdir(folder):
+        file_path = os.path.join(folder, file_name)
+        if file_name.lower().endswith(".docx"):
+            doc = docx.Document(file_path)
+            extracted_text += "\n".join([p.text for p in doc.paragraphs])
+        elif file_name.lower().endswith(".pdf"):
+            with open(file_path, "rb") as f:
+                reader = PyPDF2.PdfReader(f)
+                for page in reader.pages:
+                    extracted_text += page.extract_text() or ""
+
+    if not extracted_text.strip():
+        return {"error": "No readable content found in documents."}
+
+    # GPT summarization (you must have your OpenAI API key set as an env variable)
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+
+    response = openai.ChatCompletion.create(
+        model="gpt-4",
+        messages=[
+            {"role": "system", "content": "You are an analyst summarizing internal documents."},
+            {"role": "user", "content": f"Please summarize the key insights from the following documents:\n\n{extracted_text}"}
+        ],
+        max_tokens=600
+    )
+
+    summary = response.choices[0].message["content"]
+
+    return {
+        "clientName": clientName,
+        "summary": summary
+    }
 
 # --------------------------
 # Generate final .docx report

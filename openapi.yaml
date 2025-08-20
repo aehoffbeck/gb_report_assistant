@@ -187,6 +187,31 @@ paths:
                     type: string
                   executiveSummary:
                     type: string
+  /summarize-supporting-docs:
+    post:
+      operationId: summarizeSupportingDocs
+      summary: Read and summarize supporting documents for a client
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                clientName:
+                  type: string
+      responses:
+        '200':
+          description: Summarized insights from uploaded documents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  clientName:
+                    type: string
+                  summary:
+                    type: string
 
   /generate-report-docx:
     post:
