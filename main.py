@@ -1,0 +1,117 @@
+from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.responses import FileResponse, JSONResponse
+from pydantic import BaseModel
+from typing import List, Optional
+import os
+from docx import Document
+from datetime import datetime
+
+app = FastAPI()
+
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+# Endpoint 1: Get template fields
+class TemplateRequest(BaseModel):
+    clientName: str
+    templateName: str
+
+@app.post("/report-template-fields")
+def get_template_fields(payload: TemplateRequest):
+    fields = {
+        "competitor analysis": [
+            "Who is the competitor?",
+            "Time range?",
+            "KPIs to compare?",
+            "Strengths and weaknesses?"
+        ],
+        "media analysis": [
+            "Time range?",
+            "Top publications?",
+            "Sentiment trends?"
+        ]
+    }
+
+    uploads = [
+        {"type": "graph", "source": "Meltwater"},
+        {"type": "spreadsheet", "format": ["csv", "xlsx"]}
+    ]
+
+    return {
+        "clientName": payload.clientName,
+        "template": payload.templateName,
+        "fields": fields.get(payload.templateName.lower(), []),
+        "requiresUploads": uploads
+    }
+
+# Endpoint 2: Analyze graph (mock)
+@app.post("/analyze-graphs")
+async def analyze_graphs(files: List[UploadFile] = File(...)):
+    return {
+        "insights": [
+            "Spike in mentions during launch.",
+            "Positive sentiment overall.",
+            "Top engagement from Instagram."
+        ]
+    }
+
+# Endpoint 3: Analyze spreadsheet (mock)
+@app.post("/analyze-spreadsheet")
+async def analyze_spreadsheet(file: UploadFile = File(...)):
+    return {
+        "insights": [
+            "TechCrunch and Wired were top sources.",
+            "Coverage spike on July 10.",
+            "Sentiment 65% positive overall."
+        ]
+    }
+
+# Endpoint 4: Generate executive summary
+class ExecSummaryRequest(BaseModel):
+    clientName: str
+    templateName: str
+    fieldResponses: dict
+    graphInsights: Optional[List[str]] = []
+    spreadsheetInsights: Optional[List[str]] = []
+
+@app.post("/generate-executive-summary")
+def generate_summary(data: ExecSummaryRequest):
+    bullets = []
+    for k, v in data.fieldResponses.items():
+        bullets.append(f"- {k}: {v}")
+    bullets += [f"• {i}" for i in (data.graphInsights + data.spreadsheetInsights)]
+
+    summary = f"Executive Summary for {data.clientName}:\n\n" + "\n".join(bullets)
+
+    return {
+        "clientName": data.clientName,
+        "executiveSummary": summary
+    }
+
+# Endpoint 5: Generate report DOCX
+@app.post("/generate-report-docx")
+async def generate_report_docx(
+    clientName: str = Form(...),
+    templateName: str = Form(...),
+    executiveSummary: str = Form(...),
+    keyFindings: List[str] = Form(...),
+    graphFiles: List[UploadFile] = File(default=[])
+):
+    template_file = f"templates/{templateName.replace(' ', '_').lower()}_template.docx"
+    if not os.path.exists(template_file):
+        return JSONResponse(status_code=404, content={"error": "Template not found"})
+
+    doc = Document(template_file)
+
+    doc.add_heading("Executive Summary", level=1)
+    doc.add_paragraph(executiveSummary)
+
+    doc.add_heading("Key Findings", level=1)
+    for finding in keyFindings:
+        doc.add_paragraph(f"- {finding}", style="List Bullet")
+
+    output_path = f"{UPLOAD_DIR}/{clientName.replace(' ', '_')}_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    doc.save(output_path)
+
+    return FileResponse(output_path, filename=os.path.basename(output_path), media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
+
