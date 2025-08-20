@@ -11,40 +11,70 @@ app = FastAPI()
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-# Endpoint 1: Get template fields
+# --------------------------
+# Endpoint 1: Get template fields and prompts
+# --------------------------
 class TemplateRequest(BaseModel):
     clientName: str
     templateName: str
 
 @app.post("/report-template-fields")
 def get_template_fields(payload: TemplateRequest):
-    fields = {
-        "competitor analysis": [
-            "Who is the competitor?",
-            "Time range?",
-            "KPIs to compare?",
-            "Strengths and weaknesses?"
-        ],
-        "media analysis": [
-            "Time range?",
-            "Top publications?",
-            "Sentiment trends?"
-        ]
+    templates = {
+        "competitor analysis": {
+            "fieldNames": [
+                "clientName",
+                "dateSending",
+                "analyzedDateRange",
+                "reportObjective",
+                "numberOfCompetitors",
+                "competitorInclusionReason",
+                "competitorsAnalyzed"
+            ],
+            "userPrompts": [
+                "What is the client's name?",
+                "What date will this report be sent?",
+                "What date range is being analyzed?",
+                "What are you looking to gain from this report?",
+                "How many competitors are being analyzed?",
+                "Why did you include these specific competitors?",
+                "List the competitors being analyzed."
+            ]
+        }
     }
 
+    template_key = payload.templateName.strip().lower()
+    template_info = templates.get(template_key)
+
+    if not template_info:
+        return JSONResponse(status_code=400, content={
+            "error": f"Unsupported template '{payload.templateName}'."
+        })
+
     uploads = [
-        {"type": "graph", "source": "Meltwater"},
-        {"type": "spreadsheet", "format": ["csv", "xlsx"]}
+        {
+            "type": "graph",
+            "source": "Meltwater",
+            "description": "Upload exported graphs from Meltwater related to this report."
+        },
+        {
+            "type": "spreadsheet",
+            "format": ["csv", "xlsx"],
+            "description": "Upload the media coverage spreadsheet for this period."
+        }
     ]
 
     return {
         "clientName": payload.clientName,
         "template": payload.templateName,
-        "fields": fields.get(payload.templateName.lower(), []),
+        "fieldNames": template_info["fieldNames"],
+        "userPrompts": template_info["userPrompts"],
         "requiresUploads": uploads
     }
 
-# Endpoint 2: Analyze graph (mock)
+# --------------------------
+# Placeholder: Analyze graphs
+# --------------------------
 @app.post("/analyze-graphs")
 async def analyze_graphs(files: List[UploadFile] = File(...)):
     return {
@@ -55,7 +85,9 @@ async def analyze_graphs(files: List[UploadFile] = File(...)):
         ]
     }
 
-# Endpoint 3: Analyze spreadsheet (mock)
+# --------------------------
+# Placeholder: Analyze spreadsheet
+# --------------------------
 @app.post("/analyze-spreadsheet")
 async def analyze_spreadsheet(file: UploadFile = File(...)):
     return {
@@ -66,7 +98,9 @@ async def analyze_spreadsheet(file: UploadFile = File(...)):
         ]
     }
 
-# Endpoint 4: Generate executive summary
+# --------------------------
+# Generate executive summary
+# --------------------------
 class ExecSummaryRequest(BaseModel):
     clientName: str
     templateName: str
@@ -88,7 +122,9 @@ def generate_summary(data: ExecSummaryRequest):
         "executiveSummary": summary
     }
 
-# Endpoint 5: Generate report DOCX
+# --------------------------
+# Generate final .docx report
+# --------------------------
 @app.post("/generate-report-docx")
 async def generate_report_docx(
     clientName: str = Form(...),
@@ -114,4 +150,3 @@ async def generate_report_docx(
     doc.save(output_path)
 
     return FileResponse(output_path, filename=os.path.basename(output_path), media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document")
-
